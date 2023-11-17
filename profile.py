@@ -9,7 +9,6 @@ import geni.portal as portal
 import geni.rspec.pg as rspec
 
 BASE_IP = "10.10.1"
-BANDWIDTH = 1000000
 TNA_IMAGE = 'urn:publicid:IDN+emulab.net+image+CUDevOpsFall2018:tnak8s'
 #'urn:publicid:IDN+emulab.net+image+CUDevOpsFall2018:xdptna.node-0'
 
@@ -25,8 +24,15 @@ pc.defineParameter("nodeCount",
 pc.defineParameter("nodeType", 
                    "Node Hardware Type",
                    portal.ParameterType.NODETYPE, 
-                   "d430",
-                   longDescription="A specific hardware type to use for all nodes. This profile has been tested with d430 nodes")
+                   "",
+                   longDescription="A specific hardware type to use for all nodes. If not selected, the resource mapper will choose for you.")
+# Optional link speed, normally the resource mapper will choose for you based on node availability
+pc.defineParameter("linkSpeed",
+                   "Link Speed",
+                   portal.ParameterType.INTEGER,
+                   0,
+                   [(0,"Any"),(100000,"100Mb/s"),(1000000,"1Gb/s"),(10000000,"10Gb/s"),(25000000,"25Gb/s"),(100000000,"100Gb/s")],
+                   longDescription="A specific link speed to use for your lan. Make sure you choose a node type that supports it, or let the resource mapper find one.")
 pc.defineParameter("startKubernetes",
                    "Create Kubernetes cluster",
                    portal.ParameterType.BOOLEAN,
@@ -44,18 +50,6 @@ pc.defineParameter("cni",
                    "calico",
                    legalValues=["calico", "flannel"],
                    longDescription="This parameter is ignored if startKubernetes is set to false.")
-pc.defineParameter("calicoEncapsulation",
-                   "Specify the encapsulation for tigera calico",
-                   portal.ParameterType.STRING,
-                   "VXLAN",
-                   legalValues=["None", "IPIP", "VXLAN"],
-                   longDescription="This parameter is ignored if startKubernetes is set to false or flannel is used.")
-pc.defineParameter("calicoNAT",
-                   "Specify whether to enable/disable NAT in tigera calico",
-                   portal.ParameterType.STRING,
-                   "Enabled",
-                   legalValues=["Enabled", "Disabled"],
-                   longDescription="This parameter is ignored if startKubernetes is set to false or flannel is used.")
 
 # Below option copy/pasted directly from small-lan experiment on CloudLab
 # Optional ephemeral blockstore
@@ -69,6 +63,20 @@ pc.defineParameter("tempFileSystemSize",
                    "The images provided by the system have small root partitions, so use this option " +
                    "if you expect you will need more space to build your software packages or store " +
                    "temporary files. 0 GB indicates maximum size.")
+pc.defineParameter("calicoEncapsulation",
+                   "Specify the encapsulation for tigera calico",
+                   portal.ParameterType.STRING,
+                   "VXLAN",
+                   advanced=True,
+                   legalValues=["None", "IPIP", "VXLAN"],
+                   longDescription="This parameter is ignored if startKubernetes is set to false or flannel is used.")
+pc.defineParameter("calicoNAT",
+                   "Specify whether to enable/disable NAT in tigera calico",
+                   portal.ParameterType.STRING,
+                   "Enabled",
+                   advanced=True,
+                   legalValues=["Enabled", "Disabled"],
+                   longDescription="This parameter is ignored if startKubernetes is set to false or flannel is used.")
 params = pc.bindParameters()
 
 # Verify parameters
@@ -83,7 +91,8 @@ def create_node(name, nodes, lan):
   # Create node
   node = request.RawPC(name)
   node.disk_image = TNA_IMAGE
-  node.hardware_type = params.nodeType
+  if params.nodeType != "":
+      node.hardware_type = params.nodeType
   
   # Add interface
   iface = node.addInterface("interface-1")
@@ -100,7 +109,7 @@ def create_node(name, nodes, lan):
 
 nodes = []
 lan = request.LAN()
-lan.bandwidth = BANDWIDTH
+lan.bandwidth = params.linkSpeed
 
 # Create nodes
 # The start script relies on the idea that the primary node is 10.10.1.1, and subsequent nodes follow the
