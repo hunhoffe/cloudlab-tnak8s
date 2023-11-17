@@ -38,18 +38,6 @@ pc.defineParameter("startKubernetes",
                    portal.ParameterType.BOOLEAN,
                    True,
                    longDescription="Create a Kubernetes cluster using default image setup (calico networking, etc.)")
-pc.defineParameter("kubeproxyBackend",
-                   "If creating a Kubernetes cluster, configure kube-proxy to use iptables or ipvs",
-                   portal.ParameterType.STRING,
-                   "iptables",
-                   legalValues=["iptables", "ipvs"],
-                   longDescription="This parameter is ignored if startKubernetes is set to false.")
-pc.defineParameter("cni",
-                   "If creating a Kubernetes cluster, use calico or flannel",
-                   portal.ParameterType.STRING,
-                   "calico",
-                   legalValues=["calico", "flannel"],
-                   longDescription="This parameter is ignored if startKubernetes is set to false.")
 
 # Below option copy/pasted directly from small-lan experiment on CloudLab
 # Optional ephemeral blockstore
@@ -77,6 +65,21 @@ pc.defineParameter("calicoNAT",
                    advanced=True,
                    legalValues=["Enabled", "Disabled"],
                    longDescription="This parameter is ignored if startKubernetes is set to false or flannel is used.")
+pc.defineParameter("cni",
+                   "If creating a Kubernetes cluster, use calico or flannel",
+                   portal.ParameterType.STRING,
+                   "flannel",
+                   advanced=True,
+                   legalValues=["calico", "flannel"],
+                   longDescription="This parameter is ignored if startKubernetes is set to false.")
+pc.defineParameter("kubeproxyBackend",
+                   "If creating a Kubernetes cluster, configure kube-proxy to use iptables or ipvs",
+                   portal.ParameterType.STRING,
+                   "iptables",
+                   advanced=True,
+                   legalValues=["iptables", "ipvs"],
+                   longDescription="This parameter is ignored if startKubernetes is set to false.")
+
 params = pc.bindParameters()
 
 # Verify parameters
