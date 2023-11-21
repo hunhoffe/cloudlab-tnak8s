@@ -8,6 +8,10 @@ SCRIPT_NAME=0
 ARG_NUM_MODE=1
 ARG_NUM_PAIRS=2
 
+MYDIR="$(dirname "$(realpath "$0")")"
+SERVERSPEC_FILE="$MYDIR/serverspec.yml"
+CLIENTSPEC_FILE="$MYDIR/clientspec.yml"
+
 ################# Argument parsing #######################
 
 # Check the min number of arguments
@@ -53,16 +57,43 @@ fi
 ############### Parse k8s nodes #########################
 
 # use node 2
-serverNode=$(kubectl get no -o name | sed -n '2p')
+serverNode=$(kubectl get no -o name | sed -n '2p' | cut -c6-)
 if [ $mode == $INTRANODE_MODE ] ; then
     clientNode=$serverNode
 else
     # use node 3
-    clientNode=$(kubectl get no -o name | sed -n '3p')
+    clientNode=$(kubectl get no -o name | sed -n '3p' | cut -c6-)
 fi
 echo "==== Using node $serverNode for servers"
 echo "==== Using node $clientNode for clients"
 
+############### Set up files ############################
+ymlDir=$(mktemp -d)
+echo "==== Using temporary directory $ymlDir"
+
+for ((i=1; i<=$npairs; i++)); do
+    serverFile=$ymlDir/server$i.yml
+    cp $SERVERSPEC_FILE $serverFile
+    escapedServerNode=$(sed -e 's/[&\\/]/\\&/g; s/$/\\/' -e '$s/\\$//' <<<"$serverNode")
+    sed -i "s/REPLACE_ME_WITH_NODE/$escapedServerNode/g" $serverFile
+    sed -i "s/REPLACE_ME_WITH_SERVER_NUM/$i/g" $serverFile
+    echo "==== Created server file: $serverFile"
+    cat $serverFile
+
+    # TODO: do this for clients as well
+done
+
+################ Set up namespace #######################
+kubectl delete namespace tna-test
+kubectl create namespace tna-test
+
 ############### Start Server(s) #########################
+for ((i=1; i<=$npairs; i++)); do
+    kubectl apply -f $ymlDir/server$i.yml
+done
 
-
+############### Cleanup #################################
+echo "==== Cleanup: deleting directory and contents of $ymlDir"
+rm -rf $ymlDir
+echo "==== Deleting tna-test namespace"
+kubectl delete namespace tna-test
