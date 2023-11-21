@@ -8,6 +8,8 @@ SCRIPT_NAME=0
 ARG_NUM_MODE=1
 ARG_NUM_PAIRS=2
 
+################# Argument parsing #######################
+
 # Check the min number of arguments
 if [ $# != $NUM_ARGS ]; then
     echo "***Error: Expected $NUM_ARGS arguments."
@@ -20,9 +22,9 @@ npairs=${!ARG_NUM_PAIRS}
 
 # Check mode is either internode or intranode
 if [ $mode == $INTRANODE_MODE ] ; then
-    echo "Running intranode mode"
+    echo "==== Running intranode mode"
 elif [ $mode == $INTERNODE_MODE ] ; then
-    echo "Running internode mode"
+    echo "==== Running internode mode"
 else
     echo "***Error: Expected $INTRANODE_MODE or $INTERNODE_MODE for mode but is $mode"
     echo "$0: $USAGE_STR"
@@ -45,5 +47,22 @@ if [ ${!ARG_NUM_PAIRS} -lt 1 ] ; then
     echo "$0: $USAGE_STR"
     exit -1
 else
-    echo "Running $npairs pair(s) of pods"
+    echo "==== Running $npairs pair(s) of pods"
 fi
+
+############### Parse k8s nodes #########################
+
+# use node 2
+serverNode=$(kubectl get no -o name | sed -n '2p')
+if [ $mode == $INTRANODE_MODE ] ; then
+    clientNode=$serverNode
+else
+    # use node 3
+    clientNode=$(kubectl get no -o name | sed -n '3p')
+fi
+echo "==== Using node $serverNode for servers"
+echo "==== Using node $clientNode for clients"
+
+############### Start Server(s) #########################
+
+
