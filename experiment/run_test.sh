@@ -40,7 +40,6 @@ fi
 if [ "${!ARG_NUM_PAIRS}" -eq "${!ARG_NUM_PAIRS}" ] 2>/dev/null
 then
     :
-    # echo "$1 is an integer !!"
 else
     echo "ERROR: first parameter must be an integer."
     echo $USAGE
@@ -81,6 +80,7 @@ for ((i=1; i<=$npairs; i++)); do
     sed -i "s/REPLACE_ME_WITH_NAMESPACE/$TNA_NAMESPACE/g" $serverFile
     echo "==== Created server file: $serverFile"
     cat $serverFile
+    echo ""
 
     clientFile=$ymlDir/client$i.yml
     cp $CLIENTSPEC_FILE $clientFile
@@ -90,6 +90,7 @@ for ((i=1; i<=$npairs; i++)); do
     sed -i "s/REPLACE_ME_WITH_NAMESPACE/$TNA_NAMESPACE/g" $clientFile
     echo "==== Created client file: $clientFile"
     cat $clientFile
+    echo ""
 done
 
 ################ Set up namespace #######################
@@ -101,11 +102,22 @@ for ((i=1; i<=$npairs; i++)); do
     kubectl apply -f $ymlDir/server$i.yml
 done
 
-# TODO: wait for servers to be in running state
-
+echo "==== Waiting for server pods to have status of 'Running': "
+NUM_NOT_RUNNING=$(kubectl get pods -n $TNA_NAMESPACE | grep " Running" | wc -l)
+NUM_NOT_RUNNING=$((npairs-NUM_NOT_RUNNING))
+while [ "$NUM_NOT_RUNNING" -ne 0 ]
+do
+    sleep 1
+    printf "."
+    NUM_NOT_RUNNING=$(kubectl get pods -n $TNA_NAMESPACE | grep " Running" | wc -l)
+    NUM_NOT_RUNNING=$((NUM_PODS-NUM_NOT_RUNNING))
+done
+echo ""
+echo "==== Server pods running! Waiting an extra 5 seconds before starting clients..."
+sleep 5
 
 for ((i=1; i<=$npairs; i++)); do
-    kubectl apply -f $ymlDir/client$1.yml
+    kubectl apply -f $ymlDir/client$i.yml
 done
 
 ############### Cleanup #################################
