@@ -94,8 +94,10 @@ for ((i=1; i<=$npairs; i++)); do
 done
 
 ################ Set up namespace #######################
-kubectl delete namespace $TNA_NAMESPACE
+printf "==== Deleting and creating namespace $TNA_NAMESPACE...\n"
+kubectl delete namespace $TNA_NAMESPACE > /dev/null 2>&1
 kubectl create namespace $TNA_NAMESPACE
+echo "Done!"
 
 ############### Start Server(s) #########################
 for ((i=1; i<=$npairs; i++)); do
@@ -116,7 +118,13 @@ echo ""
 echo "==== Server pods running! Waiting an extra 5 seconds before starting clients..."
 sleep 5
 
+############### Start Clients ############################
 for ((i=1; i<=$npairs; i++)); do
+    # Get server ip (we had to wait for the server to start running to get this)
+    server_ip=$(kubectl get pod server-$i -n $TNA_NAMESPACE --template '{{.status.podIP}}')
+    echo "==== server-$i ip is: $server_ip"
+    sed -i "s/REPLACE_ME_WITH_SERVER_IP/$server_ip/g" $ymlDir/client$i.yml
+    cat $ymlDir/client$i.yml
     kubectl apply -f $ymlDir/client$i.yml
 done
 
@@ -124,4 +132,4 @@ done
 echo "==== Cleanup: deleting directory and contents of $ymlDir"
 rm -rf $ymlDir
 echo "==== Deleting tna-test namespace"
-kubectl delete namespace $TNA_NAMESPACE
+#kubectl delete namespace $TNA_NAMESPACE
