@@ -11,6 +11,7 @@ ARG_NUM_PAIRS=2
 MYDIR="$(dirname "$(realpath "$0")")"
 SERVERSPEC_FILE="$MYDIR/serverspec.yml"
 CLIENTSPEC_FILE="$MYDIR/clientspec.yml"
+TNA_NAMESPACE="tna-test"
 
 ################# Argument parsing #######################
 
@@ -77,23 +78,38 @@ for ((i=1; i<=$npairs; i++)); do
     escapedServerNode=$(sed -e 's/[&\\/]/\\&/g; s/$/\\/' -e '$s/\\$//' <<<"$serverNode")
     sed -i "s/REPLACE_ME_WITH_NODE/$escapedServerNode/g" $serverFile
     sed -i "s/REPLACE_ME_WITH_SERVER_NUM/$i/g" $serverFile
+    sed -i "s/REPLACE_ME_WITH_NAMESPACE/$TNA_NAMESPACE/g" $serverFile
     echo "==== Created server file: $serverFile"
     cat $serverFile
 
-    # TODO: do this for clients as well
+    clientFile=$ymlDir/client$i.yml
+    cp $CLIENTSPEC_FILE $clientFile
+    escapedClientNode=$(sed -e 's/[&\\/]/\\&/g; s/$/\\/' -e '$s/\\$//' <<<"$clientNode")
+    sed -i "s/REPLACE_ME_WITH_NODE/$escapedClientNode/g" $clientFile
+    sed -i "s/REPLACE_ME_WITH_CLIENT_NUM/$i/g" $clientFile
+    sed -i "s/REPLACE_ME_WITH_NAMESPACE/$TNA_NAMESPACE/g" $clientFile
+    echo "==== Created client file: $clientFile"
+    cat $clientFile
 done
 
 ################ Set up namespace #######################
-kubectl delete namespace tna-test
-kubectl create namespace tna-test
+kubectl delete namespace $TNA_NAMESPACE
+kubectl create namespace $TNA_NAMESPACE
 
 ############### Start Server(s) #########################
 for ((i=1; i<=$npairs; i++)); do
     kubectl apply -f $ymlDir/server$i.yml
 done
 
+# TODO: wait for servers to be in running state
+
+
+for ((i=1; i<=$npairs; i++)); do
+    kubectl apply -f $ymlDir/client$1.yml
+done
+
 ############### Cleanup #################################
 echo "==== Cleanup: deleting directory and contents of $ymlDir"
 rm -rf $ymlDir
 echo "==== Deleting tna-test namespace"
-kubectl delete namespace tna-test
+kubectl delete namespace $TNA_NAMESPACE

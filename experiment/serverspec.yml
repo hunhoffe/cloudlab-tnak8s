@@ -2,7 +2,7 @@ apiVersion: v1
 kind: Pod
 metadata:
   name: server-REPLACE_ME_WITH_SERVER_NUM
-  namespace: tna-test
+  namespace: REPLACE_ME_WITH_NAMESPACE
 spec:
   nodeSelector:
     kubernetes.io/hostname: REPLACE_ME_WITH_NODE
@@ -10,4 +10,4 @@ spec:
   - name: server-REPLACE_ME_WITH_SERVER_NUM
     image: hunhoffe/pkb-netperf
     imagePullPolicy: Always
-    command: ["/opt/pkb/netperf-netperf-2.7.0/src/netserver", "-D", "-p", "12865"]
+    command: ["/opt/pkb/netperf-netperf-2.7.0/src/netserver", "-D", "-p", "20000"]
