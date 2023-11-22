@@ -1,5 +1,8 @@
 #!/bin/bash
 
+#IMAGE="hunhoffe/pkb-netperf"
+IMAGE="hunhoffe/ubuntu-netperf"
+
 INTRANODE_MODE="intranode"
 INTERNODE_MODE="internode"
 TPUT_TEST="tput"
@@ -17,30 +20,51 @@ SERVERSPEC_FILE="$MYDIR/serverspec.yml"
 CLIENTSPEC_FILE="$MYDIR/clientspec.yml"
 TNA_NAMESPACE="tna-test"
 
-LAT_CMD="/opt/pkb/netperf-netperf-2.7.0/src/netperf "\
-"-p 20000 "\
-"-j "\
-"-v2 "\
+#SERVER_CMD="/opt/pkb/netperf-netperf-2.7.0/src/netserver "\
+#"-D "\
+#"-p 20000 "\
+#"-L \$MY_IP,4"
+
+SERVER_CMD="netserver "\
+"-D "\
+"-L \$MY_IP,4"
+
+#LAT_CMD="/opt/pkb/netperf-netperf-2.7.0/src/netperf "\
+#"-p 20000 "\
+#"-j "\
+#"-v2 "\
+#"-t TCP_RR "\
+#"-H REPLACE_ME_WITH_SERVER_IP,4 "\
+#"-l 60 "\
+#"-L \$MY_IP,4 "\
+#"-- "\
+#"-P ,20001 "\
+#"-o THROUGHPUT,THROUGHPUT_UNITS,P50_LATENCY,P90_LATENCY,P99_LATENCY,STDDEV_LATENCY,MIN_LATENCY,MAX_LATENCY,CONFIDENCE_ITERATION,THROUGHPUT_CONFID,LOCAL_TRANSPORT_RETRANS,REMOTE_TRANSPORT_RETRANS,TRANSPORT_MSS"
+
+LAT_CMD="netperf "\
 "-t TCP_RR "\
-"-H REPLACE_ME_WITH_SERVER_IP "\
+"-H REPLACE_ME_WITH_SERVER_IP,4 "\
 "-l 60 "\
-"-L $MY_IP,4 "\
-"-- "\
-"-P ,20001 "\
-"-o THROUGHPUT,THROUGHPUT_UNITS,P50_LATENCY,P90_LATENCY,P99_LATENCY,STDDEV_LATENCY,MIN_LATENCY,MAX_LATENCY,CONFIDENCE_ITERATION,THROUGHPUT_CONFID,LOCAL_TRANSPORT_RETRANS,REMOTE_TRANSPORT_RETRANS,TRANSPORT_MSS"
+"-L \$MY_IP,4 "
 
 # TODO: is -M and -m okay? Should be parsed from machine config, I think?
-TPUT_CMD="/opt/pkb/netperf-netperf-2.7.0/src/netperf "\
-"-p 20000 "\
-"-j "\
-"-t TCP_STREAM "\
-"-H REPLACE_ME_WITH_SERVER_IP,4 "\
-"-L $MY_IP,4 "\
-"-l 60 "\
-"-- "\
-"-P ,20001 "\
-"-o THROUGHPUT,THROUGHPUT_UNITS,P50_LATENCY,P90_LATENCY,P99_LATENCY,STDDEV_LATENCY,MIN_LATENCY,MAX_LATENCY,CONFIDENCE_ITERATION,THROUGHPUT_CONFID,LOCAL_TRANSPORT_RETRANS,REMOTE_TRANSPORT_RETRANS,TRANSPORT_MSS "\
-"-m 131072 -M 131072"
+#TPUT_CMD="/opt/pkb/netperf-netperf-2.7.0/src/netperf "\
+#"-p 20000 "\
+#"-j "\
+#"-t TCP_STREAM "\
+#"-H REPLACE_ME_WITH_SERVER_IP,4 "\
+#"-L \$MY_IP,4 "\
+#"-l 60 "\
+#"-- "\
+#"-P ,20001 "\
+#"-o THROUGHPUT,THROUGHPUT_UNITS,P50_LATENCY,P90_LATENCY,P99_LATENCY,STDDEV_LATENCY,MIN_LATENCY,MAX_LATENCY,CONFIDENCE_ITERATION,THROUGHPUT_CONFID,LOCAL_TRANSPORT_RETRANS,REMOTE_TRANSPORT_RETRANS,TRANSPORT_MSS "\
+#"-m 131072 -M 131072"
+
+#TPUT_CMD="netperf "\
+#"-t TCP_STREAM "\
+#"-H REPLACE_ME_WITH_SERVER_IP,4 "\
+#"-l 60 "\
+#"-L \$MY_IP,4 "
 
 ################# Argument parsing #######################
 
@@ -132,6 +156,9 @@ for ((i=1; i<=$npairs; i++)); do
     sed -i "s/REPLACE_ME_WITH_NODE/$escapedServerNode/g" $serverFile
     sed -i "s/REPLACE_ME_WITH_SERVER_NUM/$i/g" $serverFile
     sed -i "s/REPLACE_ME_WITH_NAMESPACE/$TNA_NAMESPACE/g" $serverFile
+    sanitizedCmd=$(sed -e 's/[&\\/]/\\&/g; s/$/\\/' -e '$s/\\$//' <<<"$SERVER_CMD")
+    sed -i "s/REPLACE_ME_WITH_CMD/$sanitizedCmd/g" $serverFile
+ 
     echo "==== Created server file: $serverFile"
 
     clientFile=$outdir/client$i.yml
