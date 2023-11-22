@@ -16,8 +16,7 @@ ARG_NUM_PAIRS=3
 ARG_NUM_OUTDIR=4
 
 MYDIR="$(dirname "$(realpath "$0")")"
-SERVERSPEC_FILE="$MYDIR/serverspec.yml"
-CLIENTSPEC_FILE="$MYDIR/clientspec.yml"
+PODSPEC_FILE="$MYDIR/podspec.yml"
 TNA_NAMESPACE="tna-test"
 
 #SERVER_CMD="/opt/pkb/netperf-netperf-2.7.0/src/netserver "\
@@ -45,7 +44,8 @@ LAT_CMD="netperf "\
 "-t TCP_RR "\
 "-H REPLACE_ME_WITH_SERVER_IP,4 "\
 "-l 60 "\
-"-L \$MY_IP,4 "
+"-L \$MY_IP,4 "\
+"; echo NETPERF_DONE; sleep infinity"
 
 # TODO: is -M and -m okay? Should be parsed from machine config, I think?
 #TPUT_CMD="/opt/pkb/netperf-netperf-2.7.0/src/netperf "\
@@ -58,13 +58,15 @@ LAT_CMD="netperf "\
 #"-- "\
 #"-P ,20001 "\
 #"-o THROUGHPUT,THROUGHPUT_UNITS,P50_LATENCY,P90_LATENCY,P99_LATENCY,STDDEV_LATENCY,MIN_LATENCY,MAX_LATENCY,CONFIDENCE_ITERATION,THROUGHPUT_CONFID,LOCAL_TRANSPORT_RETRANS,REMOTE_TRANSPORT_RETRANS,TRANSPORT_MSS "\
-#"-m 131072 -M 131072"
+#"-m 131072 -M 131072 "\
+#"; echo NETPERF_DONE; sleep infinity"
 
-#TPUT_CMD="netperf "\
-#"-t TCP_STREAM "\
-#"-H REPLACE_ME_WITH_SERVER_IP,4 "\
-#"-l 60 "\
-#"-L \$MY_IP,4 "
+TPUT_CMD="netperf "\
+"-t TCP_STREAM "\
+"-H REPLACE_ME_WITH_SERVER_IP,4 "\
+"-l 60 "\
+"-L \$MY_IP,4 "\
+"; echo NETPERF_DONE; sleep infinity"
 
 ################# Argument parsing #######################
 
@@ -76,7 +78,7 @@ if [ $# != $NUM_ARGS ]; then
 fi
 
 mode=${!ARG_NUM_MODE}
-netperf_test=${!ARG_NUM_TEST}
+netperfTest=${!ARG_NUM_TEST}
 npairs=${!ARG_NUM_PAIRS}
 outdir=${!ARG_NUM_OUTDIR}
 
@@ -92,12 +94,12 @@ else
 fi
 
 # Check test is either throughput or latency
-if [ $netperf_test == $TPUT_TEST ] ; then
+if [ $netperfTest == $TPUT_TEST ] ; then
     echo "==== Running throughput (TCP_STREAM) test"
-elif [ $netperf_test == $LAT_TEST ] ; then
+elif [ $netperfTest == $LAT_TEST ] ; then
     echo "==== Running latency (TCP_RR) test"
 else
-    echo "***Error: Expected $TPUT_TEST or $LAT_TEST for test but is $netperf_test"
+    echo "***Error: Expected $TPUT_TEST or $LAT_TEST for test but is $netperfTest"
     echo "$0: $USAGE_STR"
     exit -1
 fi
@@ -151,28 +153,33 @@ echo "==== Using node $clientNode for client(s)"
 ############### Set up files ############################
 for ((i=1; i<=$npairs; i++)); do
     serverFile=$outdir/server$i.yml
-    cp $SERVERSPEC_FILE $serverFile
+    cp $PODSPEC_FILE $serverFile
     escapedServerNode=$(sed -e 's/[&\\/]/\\&/g; s/$/\\/' -e '$s/\\$//' <<<"$serverNode")
     sed -i "s/REPLACE_ME_WITH_NODE/$escapedServerNode/g" $serverFile
-    sed -i "s/REPLACE_ME_WITH_SERVER_NUM/$i/g" $serverFile
-    sed -i "s/REPLACE_ME_WITH_NAMESPACE/$TNA_NAMESPACE/g" $serverFile
+    sed -i "s/REPLACE_ME_WITH_NAME/server$i/g" $serverFile
+    sed -i "s/REPLACE_ME_WITH_NS/$TNA_NAMESPACE/g" $serverFile
     sanitizedCmd=$(sed -e 's/[&\\/]/\\&/g; s/$/\\/' -e '$s/\\$//' <<<"$SERVER_CMD")
     sed -i "s/REPLACE_ME_WITH_CMD/$sanitizedCmd/g" $serverFile
+    sanitizedImage=$(sed -e 's/[&\\/]/\\&/g; s/$/\\/' -e '$s/\\$//' <<<"$IMAGE") 
+    sed -i "s/REPLACE_ME_WITH_IMAGE/$sanitizedImage/g" $serverFile
  
     echo "==== Created server file: $serverFile"
 
     clientFile=$outdir/client$i.yml
-    cp $CLIENTSPEC_FILE $clientFile
+    cp $PODSPEC_FILE $clientFile
     escapedClientNode=$(sed -e 's/[&\\/]/\\&/g; s/$/\\/' -e '$s/\\$//' <<<"$clientNode")
     sed -i "s/REPLACE_ME_WITH_NODE/$escapedClientNode/g" $clientFile
-    sed -i "s/REPLACE_ME_WITH_CLIENT_NUM/$i/g" $clientFile
-    sed -i "s/REPLACE_ME_WITH_NAMESPACE/$TNA_NAMESPACE/g" $clientFile
-    if [ $netperf_test == $TPUT_TEST ] ; then
+    sed -i "s/REPLACE_ME_WITH_NAME/client$i/g" $clientFile
+    sed -i "s/REPLACE_ME_WITH_NS/$TNA_NAMESPACE/g" $clientFile
+    if [ $netperfTest == $TPUT_TEST ] ; then
         sanitizedCmd=$(sed -e 's/[&\\/]/\\&/g; s/$/\\/' -e '$s/\\$//' <<<"$TPUT_CMD")
     else
         sanitizedCmd=$(sed -e 's/[&\\/]/\\&/g; s/$/\\/' -e '$s/\\$//' <<<"$LAT_CMD")
     fi
     sed -i "s/REPLACE_ME_WITH_CMD/$sanitizedCmd/g" $clientFile
+    sanitizedImage=$(sed -e 's/[&\\/]/\\&/g; s/$/\\/' -e '$s/\\$//' <<<"$IMAGE") 
+    sed -i "s/REPLACE_ME_WITH_IMAGE/$sanitizedImage/g" $clientFile
+
     echo "==== Created client file: $clientFile"
 done
 
@@ -206,22 +213,26 @@ sleep 5
 echo "==== Starting client(s)..."
 for ((i=1; i<=$npairs; i++)); do
     # Get server ip (we had to wait for the server to start running to get this)
-    server_ip=$(kubectl get pod server-$i -n $TNA_NAMESPACE --template '{{.status.podIP}}')
-    sed -i "s/REPLACE_ME_WITH_SERVER_IP/$server_ip/g" $outdir/client$i.yml
+    serverIp=$(kubectl get pod server$i -n $TNA_NAMESPACE --template '{{.status.podIP}}')
+    sed -i "s/REPLACE_ME_WITH_SERVER_IP/$serverIp/g" $outdir/client$i.yml
     kubectl apply -f $outdir/client$i.yml
 done
 
 echo "=== Waiting for netperf to run"
 for ((i = 1; i<=$npairs; i++)); do
-    clientdone=0
-    while [ "$clientdone" -ne 1 ]
+    clientDone=0
+    while [ "$clientDone" -ne 1 ]
     do
-        if kubectl logs -n $TNA_NAMESPACE client-$i | grep "NETPERF_DONE"; then
-            clientdone=1
-            kubectl logs -n $TNA_NAMESPACE client-$i > $outdir/client-$i.log
+        if kubectl logs -n $TNA_NAMESPACE client$i | grep "NETPERF_DONE"; then
+            clientDone=1
+            kubectl logs -n $TNA_NAMESPACE client$i > $outdir/client$i.log
+            kubectl logs -n $TNA_NAMESPACE server$i > $outdir/server$i.log
             echo "==== Client $i results start ======================"
-            cat $outdir/client-$i.log
+            cat $outdir/client$i.log
             echo "==== Client $i results finish ====================="
+            echo "==== Server $i output start ======================"
+            cat $outdir/server$i.log
+            echo "==== Server $i output finish ====================="
         fi
     sleep 1
     done
