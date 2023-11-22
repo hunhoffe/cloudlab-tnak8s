@@ -124,7 +124,7 @@ do
     sleep 1
     printf "."
     NUM_NOT_RUNNING=$(kubectl get pods -n $TNA_NAMESPACE | grep " Running" | wc -l)
-    NUM_NOT_RUNNING=$((NUM_PODS-NUM_NOT_RUNNING))
+    NUM_NOT_RUNNING=$((npairs-NUM_NOT_RUNNING))
 done
 echo ""
 echo "==== Server pods running! Waiting an extra 5 seconds before starting clients..."
