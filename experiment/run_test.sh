@@ -17,10 +17,28 @@ SERVERSPEC_FILE="$MYDIR/serverspec.yml"
 CLIENTSPEC_FILE="$MYDIR/clientspec.yml"
 TNA_NAMESPACE="tna-test"
 
-# TODO: for both command, how to config test duration?
-LAT_CMD="/opt/pkb/netperf-netperf-2.7.0/src/netperf -p 20000 -j -v2 -t TCP_RR -H REPLACE_ME_WITH_SERVER_IP -l 60 -- -P ,20001 -o THROUGHPUT,THROUGHPUT_UNITS,P50_LATENCY,P90_LATENCY,P99_LATENCY,STDDEV_LATENCY,MIN_LATENCY,MAX_LATENCY,CONFIDENCE_ITERATION,THROUGHPUT_CONFID,LOCAL_TRANSPORT_RETRANS,REMOTE_TRANSPORT_RETRANS,TRANSPORT_MSS"
+LAT_CMD="/opt/pkb/netperf-netperf-2.7.0/src/netperf "\
+"-p 20000 "\
+"-j "\
+"-v2 "\
+"-t TCP_RR "\
+"-H REPLACE_ME_WITH_SERVER_IP "\
+"-l 60 "\
+"-- "\
+"-P ,20001 "\
+"-o THROUGHPUT,THROUGHPUT_UNITS,P50_LATENCY,P90_LATENCY,P99_LATENCY,STDDEV_LATENCY,MIN_LATENCY,MAX_LATENCY,CONFIDENCE_ITERATION,THROUGHPUT_CONFID,LOCAL_TRANSPORT_RETRANS,REMOTE_TRANSPORT_RETRANS,TRANSPORT_MSS"
+
 # TODO: is -M and -m okay? Should be parsed from machine config, I think?
-TPUT_CMD="/opt/pkb/netperf-netperf-2.7.0/src/netperf -p 20000 -j  -t TCP_STREAM -H REPLACE_ME_WITH_SERVER_IP -l 60  -- -P ,20001 -o THROUGHPUT,THROUGHPUT_UNITS,P50_LATENCY,P90_LATENCY,P99_LATENCY,STDDEV_LATENCY,MIN_LATENCY,MAX_LATENCY,CONFIDENCE_ITERATION,THROUGHPUT_CONFID,LOCAL_TRANSPORT_RETRANS,REMOTE_TRANSPORT_RETRANS,TRANSPORT_MSS -m 131072 -M 131072"
+TPUT_CMD="/opt/pkb/netperf-netperf-2.7.0/src/netperf "\
+"-p 20000 "\
+"-j "\
+"-t TCP_STREAM "\
+"-H REPLACE_ME_WITH_SERVER_IP "\
+"-l 60 "\
+"-- "\
+"-P ,20001 "\
+"-o THROUGHPUT,THROUGHPUT_UNITS,P50_LATENCY,P90_LATENCY,P99_LATENCY,STDDEV_LATENCY,MIN_LATENCY,MAX_LATENCY,CONFIDENCE_ITERATION,THROUGHPUT_CONFID,LOCAL_TRANSPORT_RETRANS,REMOTE_TRANSPORT_RETRANS,TRANSPORT_MSS "\
+"-m 131072 -M 131072"
 
 ################# Argument parsing #######################
 
@@ -171,11 +189,14 @@ for ((i = 1; i<=$npairs; i++)); do
     do
         if kubectl logs -n $TNA_NAMESPACE client-$i | grep "NETPERF_DONE"; then
             clientdone=1
-            echo "==== Client $i is done! Logging to $outdir/client-$i.log!"
             kubectl logs -n $TNA_NAMESPACE client-$i > $outdir/client-$i.log
+            echo "==== Client $i results start ======================"
+            cat $outdir/client-$i.log
+            echo "==== Client $i results finish ====================="
         fi
     sleep 1
     done
+    echo "=== Logged results .log file(s) in $outdir"
 done
 
 ############### Cleanup #################################
