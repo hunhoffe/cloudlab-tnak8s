@@ -10,4 +10,9 @@ spec:
   - name: server-REPLACE_ME_WITH_SERVER_NUM
     image: hunhoffe/pkb-netperf
     imagePullPolicy: Always
-    command: ["/opt/pkb/netperf-netperf-2.7.0/src/netserver", "-D", "-p", "20000"]
+    command: ["/bin/bash", "-c", "/opt/pkb/netperf-netperf-2.7.0/src/netserver -D -p 20000 -L $MY_IP,4"]
+    env:
+    - name: MY_IP
+      valueFrom:
+        fieldRef:
+          fieldPath: status.podIP

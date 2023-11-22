@@ -11,3 +11,8 @@ spec:
     image: hunhoffe/pkb-netperf
     imagePullPolicy: Always
     command: ["/bin/bash", "-c", "REPLACE_ME_WITH_CMD; echo NETPERF_DONE; sleep infinity"]
+    env:
+    - name: MY_IP
+      valueFrom:
+        fieldRef:
+          fieldPath: status.podIP
