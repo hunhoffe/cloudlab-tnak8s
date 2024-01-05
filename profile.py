@@ -9,7 +9,8 @@ import geni.portal as portal
 import geni.rspec.pg as rspec
 
 BASE_IP = "10.10.1"
-TNA_IMAGE = 'urn:publicid:IDN+emulab.net+image+CUDevOpsFall2018:tnak8s'
+TNA_IMAGE = 'urn:publicid:IDN+emulab.net+image+CUDevOpsFall2018:tka-k8s'
+#'urn:publicid:IDN+emulab.net+image+CUDevOpsFall2018:tnak8s'
 #'urn:publicid:IDN+emulab.net+image+CUDevOpsFall2018:xdptna.node-0'
 
 # Note: not currently used
