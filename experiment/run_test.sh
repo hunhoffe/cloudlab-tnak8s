@@ -68,6 +68,8 @@ TPUT_CMD="netperf "\
 "-H REPLACE_ME_WITH_SERVER_IP,4 "\
 "-l 60 "\
 "-L \$MY_IP,4 "\
+"-- "\
+"-o THROUGHPUT,THROUGHPUT_UNITS,THROUGHPUT_CONFID "\
 "; echo NETPERF_DONE; sleep infinity"
 
 ################# Argument parsing #######################
