@@ -9,7 +9,7 @@ spec:
   containers:
   - name: REPLACE_ME_WITH_NAME
     image: REPLACE_ME_WITH_IMAGE
-    imagePullPolicy: Always
+    imagePullPolicy: "IfNotPresent"
     command: ["/bin/bash", "-c", "REPLACE_ME_WITH_CMD"]
     env:
     - name: MY_IP
@@ -18,9 +18,6 @@ spec:
           fieldPath: status.podIP
     resources:
       requests:
-        memory: "128Mi"
-        cpu: 1
+        memory: "256Mi"
       limits:
-        memory: "128Mi"
-        cpu: 1
-
+        memory: "256Mi"

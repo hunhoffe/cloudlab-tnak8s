@@ -45,6 +45,8 @@ LAT_CMD="netperf "\
 "-H REPLACE_ME_WITH_SERVER_IP,4 "\
 "-l 60 "\
 "-L \$MY_IP,4 "\
+"-- "\
+"-o P50_LATENCY,P90_LATENCY,P99_LATENCY,STDDEV_LATENCY,MIN_LATENCY,MAX_LATENCY,MEAN_LATENCY "\
 "; echo NETPERF_DONE; sleep infinity"
 
 # TODO: is -M and -m okay? Should be parsed from machine config, I think?
