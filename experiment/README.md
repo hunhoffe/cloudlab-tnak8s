@@ -1,5 +1,12 @@
 # Pod-to-Pod Networking Test
 
+On each node, first run the tuning script:
+```
+cd /local/repository/tuning-scripts
+sudo ./set_cpus.sh 16
+```
+Where here ```16``` is the number of cores (not hyperthreads!)
+
 To get usage information, run:
 ```bash
 ./run_test.sh
