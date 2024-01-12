@@ -19,55 +19,41 @@ MYDIR="$(dirname "$(realpath "$0")")"
 PODSPEC_FILE="$MYDIR/podspec.yml"
 TNA_NAMESPACE="tna-test"
 
-#SERVER_CMD="/opt/pkb/netperf-netperf-2.7.0/src/netserver "\
-#"-D "\
-#"-p 20000 "\
-#"-L \$MY_IP,4"
+# 90 seconds
+WAIT_IN_NANOSECONDS=90000000000
 
 SERVER_CMD="netserver "\
 "-D "\
 "-L \$MY_IP,4"
 
-#LAT_CMD="/opt/pkb/netperf-netperf-2.7.0/src/netperf "\
-#"-p 20000 "\
-#"-j "\
-#"-v2 "\
-#"-t TCP_RR "\
-#"-H REPLACE_ME_WITH_SERVER_IP,4 "\
-#"-l 60 "\
-#"-L \$MY_IP,4 "\
-#"-- "\
-#"-P ,20001 "\
-#"-o THROUGHPUT,THROUGHPUT_UNITS,P50_LATENCY,P90_LATENCY,P99_LATENCY,STDDEV_LATENCY,MIN_LATENCY,MAX_LATENCY,CONFIDENCE_ITERATION,THROUGHPUT_CONFID,LOCAL_TRANSPORT_RETRANS,REMOTE_TRANSPORT_RETRANS,TRANSPORT_MSS"
-
 LAT_CMD="netperf "\
+"-t TCP_RR "\
+"-H REPLACE_ME_WITH_SERVER_IP,4 "\
+"-l 10 "\
+"-L \$MY_IP,4 "\
+"-D 1 "\
+"-- "\
+"-o P50_LATENCY,P90_LATENCY,P99_LATENCY,STDDEV_LATENCY,MIN_LATENCY,MAX_LATENCY,MEAN_LATENCY "\
+"; current_time=\$(date +%s%N) "\
+"; target_time=REPLACE_ME_WITH_CLIENT_START "\
+"; echo \\\"Current: \$current_time, Target: \$target_time\\\" "\
+"; while [[ current_time -lt target_time ]]; do current_time=\$(date +%s%N); done "\
+"; netperf "\
 "-t TCP_RR "\
 "-H REPLACE_ME_WITH_SERVER_IP,4 "\
 "-l 60 "\
 "-L \$MY_IP,4 "\
+"-D 1 "\
 "-- "\
 "-o P50_LATENCY,P90_LATENCY,P99_LATENCY,STDDEV_LATENCY,MIN_LATENCY,MAX_LATENCY,MEAN_LATENCY "\
-"; echo NETPERF_DONE; sleep infinity"
-
-# TODO: is -M and -m okay? Should be parsed from machine config, I think?
-#TPUT_CMD="/opt/pkb/netperf-netperf-2.7.0/src/netperf "\
-#"-p 20000 "\
-#"-j "\
-#"-t TCP_STREAM "\
-#"-H REPLACE_ME_WITH_SERVER_IP,4 "\
-#"-L \$MY_IP,4 "\
-#"-l 60 "\
-#"-- "\
-#"-P ,20001 "\
-#"-o THROUGHPUT,THROUGHPUT_UNITS,P50_LATENCY,P90_LATENCY,P99_LATENCY,STDDEV_LATENCY,MIN_LATENCY,MAX_LATENCY,CONFIDENCE_ITERATION,THROUGHPUT_CONFID,LOCAL_TRANSPORT_RETRANS,REMOTE_TRANSPORT_RETRANS,TRANSPORT_MSS "\
-#"-m 131072 -M 131072 "\
-#"; echo NETPERF_DONE; sleep infinity"
+"; echo \\\"NETPERF_DONE, target=\$target_time, started at \$current_time\\\"; sleep infinity"
 
 TPUT_CMD="netperf "\
 "-t TCP_STREAM "\
 "-H REPLACE_ME_WITH_SERVER_IP,4 "\
-"-l 60 "\
+"-l 300 "\
 "-L \$MY_IP,4 "\
+"-D 1 "\
 "-- "\
 "-o THROUGHPUT,THROUGHPUT_UNITS,THROUGHPUT_CONFID "\
 "; echo NETPERF_DONE; sleep infinity"
@@ -213,12 +199,17 @@ echo ""
 echo "==== Server pod(s) running! Waiting an extra 5 seconds before starting client(s)..."
 sleep 5
 
+NANO_TIMESTAMP=$(date +%s%N)
+clientStart=$((NANO_TIMESTAMP + WAIT_IN_NANOSECONDS))
+echo "Current time: $NANO_TIMESTAMP, will start clients at: $clientStart"
+
 ############### Start Clients ############################
 echo "==== Starting client(s)..."
 for ((i=1; i<=$npairs; i++)); do
     # Get server ip (we had to wait for the server to start running to get this)
     serverIp=$(kubectl get pod server$i -n $TNA_NAMESPACE --template '{{.status.podIP}}')
     sed -i "s/REPLACE_ME_WITH_SERVER_IP/$serverIp/g" $outdir/client$i.yml
+    sed -i "s/REPLACE_ME_WITH_CLIENT_START/$clientStart/g" $outdir/client$i.yml
     kubectl apply -f $outdir/client$i.yml
 done
 
