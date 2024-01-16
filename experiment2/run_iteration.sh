@@ -83,14 +83,27 @@ do
     echo "==== client command is: $client_cmd"
 
     # Run the command in the background and remember the pid
-    kubectl exec client1 -n tna-test -- /bin/bash -c "current_time=$client_cmd" &
-    pod_cmd_pid=$!
-    echo "==== Pid of command is: $!"
+    kubectl exec $client_pod -n $TNA_NAMESPACE -- /bin/bash -c "$client_cmd" &
 done
 
-# Wait for test to run
-test_done=$((WAIT_IN_NANOSECONDS * 6)) # wait test duration aka 1 minute
-test_done=$((test_start + test_done))
+############### Wait for processes to complete ##################
+echo "==== Waiting for processes to complete..."
+running_processes=$(ps -aux | grep kubectl | wc -l)
+while [ $running_processes -ne 1 ];
+do
+    sleep 10
+    running_processes=$(ps -aux | grep kubectl | wc -l)
+    my_procs=$((running_processes - 1))
+    echo -e "\t\t$my_procs tests still running..."
+done
 
-# Iterate over each pod and wait until done, then copy file to output director and delete pod file.
-#kubectl cp tna-test/client1:netperf_out.txt mypod.txt -n tna-test
+############### Collect data and remove file from pod
+for client_pod in $client_pods;
+do
+    outfile=$outdir/$client_pod.txt
+    kubectl cp -n $TNA_NAMESPACE $TNA_NAMESPACE/$client_pod:outfile.txt $outfile
+    echo "============= Output file from $client_pod ($outfile) =============="
+    cat $outfile
+    echo "===================================================================="
+    kubectl exec $client_pod -n $TNA_NAMESPACE -- /bin/bash -c "rm outfile.txt"
+done
