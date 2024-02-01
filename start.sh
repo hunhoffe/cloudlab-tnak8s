@@ -240,12 +240,6 @@ if [ $1 == $SECONDARY_ARG ] ; then
     sudo systemctl restart containerd || (echo "ERROR: Failed to restart containerd, exiting." && exit -1)
 
     setup_secondary $2
-
-    # do some cleanup
-    sudo apt-get clean
-    sudo apt-get autoclean
-    sudo apt-get autoremove
-
     exit 0
 fi
 
@@ -286,9 +280,4 @@ apply_flannel
 # Coordinate master to add nodes to the kubernetes cluster
 # Argument is number of nodes
 add_cluster_nodes $3
-
-# do some cleanup
-sudo apt-get clean
-sudo apt-get autoclean
-sudo apt-get autoremove
 
