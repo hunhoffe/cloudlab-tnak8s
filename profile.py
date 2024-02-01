@@ -9,7 +9,7 @@ import geni.portal as portal
 import geni.rspec.pg as rspec
 
 BASE_IP = "10.10.1"
-TNA_IMAGE = 'urn:publicid:IDN+emulab.net+image+CUDevOpsFall2018:tnak8s6.6'
+TNA_IMAGE = 'urn:publicid:IDN+emulab.net+image+CUDevOpsFall2018:tnak8s '
 
 # Set up parameters
 pc = portal.Context()
