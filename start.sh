@@ -7,15 +7,11 @@ SECONDARY_PORT=3000
 INSTALL_DIR=/local/repository
 IFACE_NAME="myiface"
 
-NUM_MIN_ARGS=4
+NUM_MIN_ARGS=3
 PRIMARY_ARG="primary"
 SECONDARY_ARG="secondary"
-IPVS_ARG="ipvs"
-IPTABLES_ARG="iptables"
-FLANNEL_ARG="flannel"
-CALICO_ARG="calico"
-USAGE=$'Usage:\n\t./start.sh secondary <node_ip> <start_kubernetes> <ipvs|iptables>\n\t./start.sh primary <node_ip> <num_nodes> <start_kubernetes> <ipvs|iptables> <encapsulation> <nat> <flannel|calico>'
-NUM_PRIMARY_ARGS=8
+USAGE=$'Usage:\n\t./start.sh secondary <node_ip> <start_kubernetes>\n\t./start.sh primary <node_ip> <num_nodes> <start_kubernetes>'
+NUM_PRIMARY_ARGS=4
 PROFILE_GROUP="profileuser"
 
 configure_docker_storage() {
@@ -33,20 +29,6 @@ configure_docker_storage() {
     sudo systemctl restart docker || (echo "ERROR: Docker installation failed, exiting." && exit -1)
     sudo docker run hello-world | grep "Hello from Docker!" || (echo "ERROR: Docker installation failed, exiting." && exit -1)
     printf "%s: %s\n" "$(date +"%T.%N")" "Configured docker storage to use mountpoint"
-}
-
-configure_ipvs() {
-    # Information from: https://github.com/kubernetes/kubernetes/blob/master/pkg/proxy/ipvs/README.md
-    
-    # Load modules
-    sudo modprobe -- ip_vs
-    sudo modprobe -- ip_vs_rr
-    sudo modprobe -- ip_vs_wrr
-    sudo modprobe -- ip_vs_sh
-    sudo modprobe -- nf_conntrack
-
-    # Load helpful packages (note that ipset is already installed)
-    sudo apt install ipvsadm
 }
 
 disable_swap() {
@@ -117,51 +99,6 @@ setup_primary() {
 	ls -lah /users/$CURRENT_USER/.kube
     done
     printf "%s: %s\n" "$(date +"%T.%N")" "Done!"
-}
-
-apply_calico() {
-    # https://docs.tigera.io/calico/latest/getting-started/kubernetes/quickstart
-    kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.1/manifests/tigera-operator.yaml > $INSTALL_DIR/tigera_install.log 2>&1 
-    if [ $? -ne 0 ]; then
-       echo "***Error: Error when installing tigera operator. Log written to $INSTALL_DIR/tigera_install.log"
-       exit 1
-    fi
-    printf "%s: %s\n" "$(date +"%T.%N")" "Loaded tigera operator"
-
-    kubectl create -f /local/repository/calico_resources.yaml > $INSTALL_DIR/calico_install.log 2>&1
-    if [ $? -ne 0 ]; then
-       echo "***Error: Error when installing calico. Log written to $INSTALL_DIR/calico_install.log"
-       exit 1
-    fi
-    printf "%s: %s\n" "$(date +"%T.%N")" "Applied Calico networking!"
-
-    # wait for calico pods to be in ready state
-    printf "%s: %s\n" "$(date +"%T.%N")" "Waiting for calico pods to have status of 'Running': "
-    NUM_PODS=$(kubectl get pods -n calico-system | wc -l)
-    NUM_RUNNING=$(kubectl get pods -n calico-system | grep " Running" | wc -l)
-    NUM_RUNNING=$((NUM_PODS-NUM_RUNNING))
-    while [ "$NUM_RUNNING" -ne 0 ]
-    do
-        sleep 1
-        printf "."
-        NUM_RUNNING=$(kubectl get pods -n calico-system | grep " Running" | wc -l)
-        NUM_RUNNING=$((NUM_PODS-NUM_RUNNING))
-    done
-    printf "%s: %s\n" "$(date +"%T.%N")" "Calico pods running!"
-    
-    # wait for kube-system pods to be in ready state
-    printf "%s: %s\n" "$(date +"%T.%N")" "Waiting for all system pods to have status of 'Running': "
-    NUM_PODS=$(kubectl get pods -n kube-system | wc -l)
-    NUM_RUNNING=$(kubectl get pods -n kube-system | grep " Running" | wc -l)
-    NUM_RUNNING=$((NUM_PODS-NUM_RUNNING))
-    while [ "$NUM_RUNNING" -ne 0 ]
-    do
-        sleep 1
-        printf "."
-        NUM_RUNNING=$(kubectl get pods -n kube-system | grep " Running" | wc -l)
-        NUM_RUNNING=$((NUM_PODS-NUM_RUNNING))
-    done
-    printf "%s: %s\n" "$(date +"%T.%N")" "Kubernetes system pods running!"
 }
 
 apply_flannel() {
@@ -292,18 +229,6 @@ if [ $1 == $SECONDARY_ARG ] ; then
         printf "%s: %s\n" "$(date +"%T.%N")" "Start Kubernetes is $3, done!"
         exit 0
     fi
-
-    # Setup to use ipvs if desired
-    if [ $4 == $IPVS_ARG ] ; then
-        configure_ipvs
-        echo "Using ipvs"
-    elif [ $4 == $IPTABLES_ARG ] ; then
-        echo "Using iptables"
-    else
-        echo "***Error: Expected $IPVS_ARG or $IPTABLES_ARG"
-        echo "$USAGE"
-        exit -1
-    fi
     
     # Use second argument (node IP) to replace filler in kubeadm configuration
     cat /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
@@ -331,20 +256,6 @@ if [ "$4" = "False" ]; then
     exit 0
 fi
 
-# Setup to use ipvs if desired
-if [ $5 == $IPVS_ARG ] ; then
-    configure_ipvs
-    echo "Using ipvs"
-elif [ $5 == $IPTABLES_ARG ] ; then
-    echo "Using iptables"
-else
-    echo "***Error: Expected $IPVS_ARG or $IPTABLES_ARG"
-    echo "$USAGE"
-    exit -1
-fi
-
-# TODO: should probably also check encapsulation/NAT args too
-
 # Use second argument (node IP) to replace filler in kubeadm configuration
 cat /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
 sudo sed -i.bak "s/REPLACE_ME_WITH_IP/$2/g" /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
@@ -355,11 +266,6 @@ sudo sed -i.bak "s/REPLACE_ME_WITH_IP/$2/g" $INSTALL_DIR/kubeadm.yaml
 sudo sed -i.bak "s/REPLACE_ME_WITH_MODE/$5/g" $INSTALL_DIR/kubeadm.yaml
 cat $INSTALL_DIR/kubeadm.yaml
 
-# Update calico config based on params
-sudo sed -i.bak "s/REPLACE_ME_WITH_ENCAPSULATION/$6/g" $INSTALL_DIR/calico_resources.yaml
-sudo sed -i.bak "s/REPLACE_ME_WITH_NAT/$7/g" $INSTALL_DIR/calico_resources.yaml
-cat $INSTALL_DIR/calico_resources.yaml
-
 # Learned this from https://k21academy.com/docker-kubernetes/container-runtime-is-not-running/
 sudo rm /etc/containerd/config.toml
 sudo systemctl restart containerd || (echo "ERROR: Failed to restart containerd, exiting." && exit -1)
@@ -368,20 +274,8 @@ sudo systemctl restart containerd || (echo "ERROR: Failed to restart containerd,
 # Argument is node_ip
 setup_primary
 
-# Setup to use ipvs if desired
-if [ $8 == $CALICO_ARG ] ; then
-    # Apply calico networking
-    apply_calico
-    echo "Using calico"
-elif [ $8 == $FLANNEL_ARG ] ; then
-    # Apply flannel networking
-    apply_flannel
-    echo "Using flannel"
-else
-    echo "***Error: Expected $CALICO_ARG or $FLANNEL_ARG"
-    echo "$USAGE"
-    exit -1
-fi
+# Apply flannel networking
+apply_flannel
 
 # Coordinate master to add nodes to the kubernetes cluster
 # Argument is number of nodes
