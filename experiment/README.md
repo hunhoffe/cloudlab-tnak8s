@@ -1,24 +1,17 @@
-# Pod-to-Pod Networking Test
+# Running
 
-On each node, first run the tuning script:
-```
-cd /local/repository/tuning-scripts
-sudo ./set_cpus.sh 16
-```
-Where here ```16``` is the number of cores (not hyperthreads!)
-
-To get usage information, run:
+Create pairs:
 ```bash
-./run_test.sh
+./create_pair <internode|intranode>
 ```
 
-Generally, in intranode tests, all pods are run on node2.
-In internode tests, servers run on node2 and clients run on node3.
-
-Some commands of interest are:
-```
-./run_test.sh intranode lat 1 lat-out
-./run_test.sh intranode tput 1 tput-out
+Run iteration:
+```bash
+./run_iteration
 ```
 
-If you run the TNA controller on node2, the tests should run successfully.
+# Clean
+
+```bash
+kubectl delete namespace tna-test
+```
