@@ -24,4 +24,4 @@ To get information on the cluster, use kubectl as expected:
 
 ## Image Creation
 
-The process to create the underlying image is documented in [```image_setup.md```](image_setup.md)
+The process to create the underlying image is documented in [```create_image.md```](create_image.md)
