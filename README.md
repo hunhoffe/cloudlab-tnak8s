@@ -6,7 +6,7 @@ Specifically, the goal of this repo is to create a CloudLab profile that allows 
 
 ## User Information
 
-Create a CloudLab experiment using the OpenWhisk profile. It's recommended to use at least 3 nodes for the cluster. It has been testsed on d430 nodes. 
+Create a CloudLab experiment using the tnak8s profile. It's recommended to use at least 3 nodes for the cluster. It has been testsed on c6525-25g nodes. 
 
 On each node, a copy of this repo is available at:
 ```
@@ -24,4 +24,4 @@ To get information on the cluster, use kubectl as expected:
 
 ## Image Creation
 
-The [```image_setup.sh```](image_setup.sh) script is how the image was created from the base TNA image.
+The process to create the underlying image is documented in [```image_setup.md```](image_setup.md)
