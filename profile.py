@@ -9,12 +9,7 @@ import geni.portal as portal
 import geni.rspec.pg as rspec
 
 BASE_IP = "10.10.1"
-TNA_IMAGE = 'urn:publicid:IDN+emulab.net+image+CUDevOpsFall2018:tka-k8s'
-#'urn:publicid:IDN+emulab.net+image+CUDevOpsFall2018:tnak8s'
-#'urn:publicid:IDN+emulab.net+image+CUDevOpsFall2018:xdptna.node-0'
-
-# Note: not currently used
-# XDP_IMAGE = 'urn:publicid:IDN+emulab.net+image+CUDevOpsFall2018//xdptna'
+TNA_IMAGE = 'urn:publicid:IDN+emulab.net+image+CUDevOpsFall2018:tnak8s:0'
 
 # Set up parameters
 pc = portal.Context()
@@ -52,34 +47,6 @@ pc.defineParameter("tempFileSystemSize",
                    "The images provided by the system have small root partitions, so use this option " +
                    "if you expect you will need more space to build your software packages or store " +
                    "temporary files. 0 GB indicates maximum size.")
-pc.defineParameter("calicoEncapsulation",
-                   "Specify the encapsulation for tigera calico",
-                   portal.ParameterType.STRING,
-                   "VXLAN",
-                   advanced=True,
-                   legalValues=["None", "IPIP", "VXLAN"],
-                   longDescription="This parameter is ignored if startKubernetes is set to false or flannel is used.")
-pc.defineParameter("calicoNAT",
-                   "Specify whether to enable/disable NAT in tigera calico",
-                   portal.ParameterType.STRING,
-                   "Enabled",
-                   advanced=True,
-                   legalValues=["Enabled", "Disabled"],
-                   longDescription="This parameter is ignored if startKubernetes is set to false or flannel is used.")
-pc.defineParameter("cni",
-                   "If creating a Kubernetes cluster, use calico or flannel",
-                   portal.ParameterType.STRING,
-                   "flannel",
-                   advanced=True,
-                   legalValues=["calico", "flannel"],
-                   longDescription="This parameter is ignored if startKubernetes is set to false.")
-pc.defineParameter("kubeproxyBackend",
-                   "If creating a Kubernetes cluster, configure kube-proxy to use iptables or ipvs",
-                   portal.ParameterType.STRING,
-                   "iptables",
-                   advanced=True,
-                   legalValues=["iptables", "ipvs"],
-                   longDescription="This parameter is ignored if startKubernetes is set to false.")
 
 params = pc.bindParameters()
 
@@ -124,11 +91,11 @@ for i in range(params.nodeCount):
 
 # Iterate over secondary nodes first
 for i, node in enumerate(nodes[1:]):
-    node.addService(rspec.Execute(shell="bash", command="/local/repository/start.sh secondary {}.{} {} {} > /local/repository/start.log 2>&1 &".format(
-      BASE_IP, i + 2, params.startKubernetes, params.kubeproxyBackend)))
+    node.addService(rspec.Execute(shell="bash", command="/local/repository/start.sh secondary {}.{} {} > /local/repository/start.log 2>&1 &".format(
+      BASE_IP, i + 2, params.startKubernetes)))
 
 # Start primary node
-nodes[0].addService(rspec.Execute(shell="bash", command="/local/repository/start.sh primary {}.1 {} {} {} {} {} {} > /local/repository/start.log 2>&1".format(
-  BASE_IP, params.nodeCount, params.startKubernetes, params.kubeproxyBackend, params.calicoEncapsulation, params.calicoNAT, params.cni)))
+nodes[0].addService(rspec.Execute(shell="bash", command="/local/repository/start.sh primary {}.1 {} {} > /local/repository/start.log 2>&1".format(
+  BASE_IP, params.nodeCount, params.startKubernetes)))
 
 pc.printRequestRSpec()
